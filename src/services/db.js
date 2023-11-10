@@ -36,31 +36,6 @@ module.exports = {
 
   createTable: async (model) => {
     try {
-      if (model._tableName === "users") {
-        const checkUser = await pool.query(
-          "SELECT * FROM users WHERE login = $1",
-          ["admin"]
-        );
-        if (checkUser.rows.length === 0) {
-          const hashedPass = await bcrypt.hash("1NzAwNzQzNyw", 12);
-          await pool.query(
-            `INSERT INTO users ("type", "login", "email", "password", "active", "userName", "created", "updated", "deleted") VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9)  ON CONFLICT (login) DO NOTHING;`,
-            [
-              "admin",
-              "admin",
-              "admin@gmail.com",
-              hashedPass,
-              true,
-              "Admin",
-              new Date(),
-              new Date(),
-              null,
-            ]
-          );
-          console.log(`Admin is granted!`);
-        }
-      }
-
       let query = `CREATE TABLE IF NOT EXISTS ${model._tableName} ( `;
       for (let field in model) {
         if (field.slice(0, 1) !== "_") {
@@ -72,69 +47,95 @@ module.exports = {
       query = query.slice(0, -2);
       query += ");";
       await pool.query(query);
-      console.log(`Table ${model._tableName} is successfully created!!`);
+      console.info(`Table ${model._tableName} is successfully created!!`);
+      if (model._tableName === "users") {
+        const hashedPass = await bcrypt.hash("1NzAwNzQzNyw", 12);
+        await pool.query(
+          `INSERT INTO users ( "type", "login", "email", "password", "userName", "image", "created", "updated", "deleted", "lastLogin") VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)  ON CONFLICT (login) DO NOTHING;`,
+          [
+            "admin",
+            "admin",
+            "admin@gmail.com",
+            hashedPass,
+            "admin",
+            null,
+            new Date(),
+            new Date(),
+            null,
+            null,
+          ]
+        );
+        console.info(`Admin is granted!`);
+      }
     } catch (e) {
       if (!e.toString().includes("already exists")) {
-        console.log(
-          `Unexpected error on creating table ${model._tableName}`,
-          e
-        );
+        console.error(`Unexpected error on createTable ${model._tableName}`, e);
       }
+      console.error("Error at createHelper: " + e.toString());
     }
   },
 
   createHelper: (model, body) => {
     try {
-      const columns = Object.keys(model).filter(
-        (field) =>
-          !field.startsWith("_") &&
-          !model[field].primaryKey &&
-          (body[field] !== undefined ||
-            field === "active" ||
-            field === "data" ||
-            field === "created" ||
-            field === "updated" ||
-            field === "deleted" ||
-            field === "lastLogin")
-      );
+      let query = `INSERT INTO ${model._tableName} ( `;
       const params = [];
-      const placeholders = [];
-
-      columns.forEach((column, index) => {
-        if (column === "active") {
-          placeholders.push(`$${index + 1}`);
-          params.push(true);
-        } else if (column === "data") {
-          placeholders.push(`$${index + 1}`);
-          params.push(body[column]);
-        } else if (column === "created" || column === "updated") {
-          placeholders.push(`TO_TIMESTAMP($${params.length + 1})`);
-          params.push(Date.now() / 1000);
-        } else if (column === "deleted" || column === "lastLogin") {
-          placeholders.push(`$${index + 1}`);
-          params.push(null);
-        } else {
-          placeholders.push(`$${index + 1}`);
-          params.push(body[column]);
+      for (let field in model) {
+        if (field === "id" && model._tableName === "orders") {
+          params.push(getUnicRandomId(model));
+          query += `id, `;
+          continue;
         }
-      });
-
-      const columnsStr = columns.map((column) => `"${column}"`).join(", ");
-      const placeholdersStr = placeholders.join(", ");
-
-      const query = `INSERT INTO ${model._tableName} (${columnsStr}) VALUES (${placeholdersStr}) RETURNING *;`;
-
-      return { query, params };
+        let value;
+        if (field.slice(0, 1) !== "_" && !model[field].primaryKey) {
+          if (typeof body[field] === "boolean") {
+            value = body[field];
+          } else if (body[field]) {
+            value = body[field];
+          } else if (model[field].defaultValue) {
+            value = model[field].defaultValue;
+          } else if (model[field].allowNull) {
+            value = typeof body[field] === "number" ? body[field] : null;
+          } else if (field === "created") {
+            value = new Date();
+          } else if (field === "updated") {
+            value = new Date();
+          } else if (typeof body[field] === "string") {
+            value = "";
+          } else {
+            if (
+              model._tableName === "users" &&
+              typeof body[field] === "boolean"
+            ) {
+              value = body[field];
+            } else {
+              console.log(`Missed field ${field}`);
+              return { error: `Missed field ${field}` };
+            }
+          }
+          params.push(value);
+          query += `"${field}", `;
+        }
+      }
+      if (params.length > 0) {
+        query = query.slice(0, -2) + `) VALUES ( `;
+        for (let ind in params) {
+          query += `$${1 + Number.parseInt(ind)}, `;
+        }
+        query = query.slice(0, -2) + `) RETURNING *;`;
+        return { query, params };
+      } else {
+        return {};
+      }
     } catch (e) {
-      console.error("Error at createHelper: " + e.toString());
-      return {};
+      console.error(`Error at createHelper ${e.toString()} `);
     }
   },
 
   patchHelper: (model, id, body) => {
     let query = `UPDATE ${model._tableName} SET `;
     const params = [];
-    for (let field in body) {
+
+    for (let field in model) {
       if (
         model[field] &&
         !model[field].primaryKey &&
@@ -142,15 +143,18 @@ module.exports = {
         field !== "created" &&
         field !== "deleted"
       ) {
-        params.push(body[field]);
-        query += `"${field}" = $${params.length}, `;
+        if (body[field] !== undefined) {
+          params.push(body[field]);
+          query += `"${field}" = $${params.length}, `;
+        }
       }
     }
+
     params.push(new Date());
-    query += `updated = $${params.length}, `;
+    query += `updated = $${params.length} `;
+
     if (params.length > 0) {
-      query =
-        query.slice(0, -2) + ` WHERE id = $${params.length + 1}  RETURNING *;`;
+      query += `WHERE id = $${params.length + 1} RETURNING *;`;
       params.push(id);
       return { query, params };
     } else {

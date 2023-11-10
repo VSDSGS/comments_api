@@ -1,28 +1,6 @@
 const Jimp = require("jimp");
 
 const imageModule = {
-  checkImageExtension: function (base64Data) {
-    const supportedExtensions = /\.(jpg|jpeg|png)$/i;
-    const base64String = Buffer.from(base64Data, "base64").toString("ascii");
-    const matches = base64String.match(/^data:image\/([A-Za-z-+/]+);base64,/);
-
-    if (!matches) {
-      console.log("Invalid base64 image format");
-      return false;
-    }
-
-    const extension = matches[1].toLowerCase();
-
-    if (!supportedExtensions.test(extension)) {
-      console.log(
-        "Unsupported image extension. Only jpg, jpeg, png, and gif are allowed."
-      );
-      return false;
-    }
-
-    return true;
-  },
-
   checkImageSize: async function (base64Data) {
     try {
       if (!this.checkImageExtension(base64Data)) {

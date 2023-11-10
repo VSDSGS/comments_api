@@ -2,15 +2,64 @@ const bcrypt = require("bcryptjs");
 const { User } = require("../models/user");
 const db = require("../services/db");
 const dbHelper = require("../functions/dbHelpers");
+const dataHelper = require("../functions/dataHelpers");
 const jwt = require("jsonwebtoken");
-const { jwtSecret, jwtLongExpiresIn, jwtExpiresIn } = require("../config");
-const imageModule = require("../functions/imageHelpers");
+const {
+  jwtSecret,
+  jwtLongExpiresIn,
+  jwtExpiresIn,
+  maxUserFieldsLength,
+} = require("../config");
+const imageHelper = require("../functions/imageHelpers");
 
 exports.createUser = async (req, res) => {
   try {
-    const { email, login, type, password, userName, data } = req.body;
+    let { type, login, email, password, userName, image } = req.body;
 
-    if (!email || !login || !type || !password || !userName) {
+    let decoded;
+    if (
+      req.headers?.authorization ||
+      req.headers?.authorization?.startsWith("Bearer ")
+    ) {
+      const token = req.headers.authorization.split(" ")[1];
+      try {
+        decoded = jwt.verify(token, jwtSecret);
+      } catch (err) {
+        return res.status(403).json({
+          status: false,
+          payload: null,
+          error: {
+            message: "Invalid token",
+            description: err.message,
+            code: 403,
+          },
+        });
+      }
+      if (decoded.role !== "admin")
+        return res.status(403).json({
+          status: false,
+          payload: null,
+          error: {
+            message: "You have no permission to create new users",
+            description: "Creating new user is not allowed while logged in",
+            code: 403,
+          },
+        });
+    } else if (
+      !req.headers?.authorization?.startsWith("Bearer ") &&
+      type === "admin"
+    )
+      return res.status(403).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "You have no permission to create new users",
+          description: "Creating new admin user is not allowed",
+          code: 403,
+        },
+      });
+
+    if (!type || !login || !email || !password || !userName) {
       return res.status(422).json({
         status: false,
         payload: null,
@@ -23,11 +72,12 @@ exports.createUser = async (req, res) => {
     }
 
     if (
-      typeof email !== "string" ||
-      typeof login !== "string" ||
       typeof type !== "string" ||
+      typeof login !== "string" ||
+      typeof email !== "string" ||
       typeof password !== "string" ||
-      typeof userName !== "string"
+      typeof userName !== "string" ||
+      (type !== "admin" && type !== "user")
     ) {
       return res.status(422).json({
         status: false,
@@ -40,49 +90,54 @@ exports.createUser = async (req, res) => {
       });
     }
 
-    if (req.body?.data?.image) {
-      if (imageModule.isBase64(req.body.data.image)) {
-        const imgChecks =
-          imageModule.checkImageExtension(req.body.data.image) &&
-          imageModule.checkImageSize(req.body.data.image);
-        if (imgChecks !== true) {
-          return res.status(422).json({
-            status: false,
-            payload: null,
-            error: {
-              message: "Incorrect data type for image",
-              description: "Image is not Base64 or URL",
-              code: 422,
-            },
-          });
-        }
-      } else {
-        return res.status(422).json({
-          status: false,
-          payload: null,
-          error: {
-            message: "Incorrect data type for image",
-            description: "Image is not Base64 or URL",
-            code: 422,
-          },
-        });
-      }
+    if (image) {
+      image = await dataHelper.imageTransformer(image);
+    }
+
+    if (!dataHelper.validateStringLength(login)) {
+      return res.status(422).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "Login length is too large",
+          description: `Login must be within ${maxUserFieldsLength} characters`,
+          code: 422,
+        },
+      });
+    } else if (!dataHelper.validateStringLength(email)) {
+      return res.status(422).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "Email length is too large",
+          description: `Email must be within ${maxUserFieldsLength} characters`,
+          code: 422,
+        },
+      });
+    } else if (!dataHelper.validateStringLength(userName)) {
+      return res.status(422).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "User name length is too large",
+          description: `User name must be within ${maxUserFieldsLength} characters`,
+          code: 422,
+        },
+      });
+    } else if (!dataHelper.validateStringLength(password)) {
+      return res.status(422).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "User password length is too large",
+          description: `User password must be within ${maxUserFieldsLength} characters`,
+          code: 422,
+        },
+      });
     }
 
     const lowerCaseEmail = email.toLowerCase();
     const lowerCaseLogin = login.toLowerCase();
-
-    if (type === "admin") {
-      return res.status(403).json({
-        status: false,
-        payload: null,
-        error: {
-          message: "Creating this type of user is not allowed",
-          description: "Creating this type of user is not allowed",
-          code: 403,
-        },
-      });
-    }
 
     const candidateCountEmailQuery = await db.query(
       "SELECT COUNT(email) FROM users WHERE LOWER(email) = $1",
@@ -140,20 +195,13 @@ exports.createUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    const now = new Date().toISOString();
-
     const { query, params } = db.createHelper(User, {
-      email: lowerCaseEmail,
-      login: lowerCaseLogin,
       type,
+      login: lowerCaseLogin,
+      email: lowerCaseEmail,
       password: hashedPassword,
       userName,
-      active: true,
-      data: data || {},
-      created: now,
-      updated: now,
-      deleted: null,
-      lastLogin: null,
+      image,
     });
 
     if (query && params) {
@@ -205,7 +253,7 @@ exports.login = async (req, res) => {
 
     const response = await db.query(
       "SELECT * FROM users WHERE LOWER(email) = $1",
-      [email.toLowerCase()]
+      [email]
     );
 
     if (response.length === 0) {
@@ -220,7 +268,7 @@ exports.login = async (req, res) => {
     const user = response[0];
 
     if (user.deleted !== null) {
-      const error = `User is not active or is locked`;
+      const error = `User is banned`;
       return res.status(403).json({
         status: false,
         payload: null,
@@ -269,8 +317,29 @@ exports.login = async (req, res) => {
 
 exports.listAllUsers = async (req, res) => {
   try {
+    if (
+      !req.headers?.authorization ||
+      !req.headers?.authorization?.startsWith("Bearer ")
+    ) {
+      return res
+        .status(401)
+        .json({ status: false, message: "Unauthorized: Token not found" });
+    }
     const token = req.headers.authorization.split(" ")[1];
-    const decoded = jwt.verify(token, jwtSecret);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+    } catch (err) {
+      return res.status(403).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "Invalid token",
+          description: err.message,
+          code: 403,
+        },
+      });
+    }
 
     if (decoded.role !== "admin") {
       return res.status(403).json({ status: false, message: "Access denied" });
@@ -306,8 +375,8 @@ exports.listAllUsers = async (req, res) => {
 exports.findUserSelf = async (req, res) => {
   try {
     if (
-      !req.headers.authorization ||
-      !req.headers.authorization.startsWith("Bearer ")
+      !req.headers?.authorization ||
+      !req.headers?.authorization?.startsWith("Bearer ")
     ) {
       return res
         .status(401)
@@ -315,7 +384,20 @@ exports.findUserSelf = async (req, res) => {
     }
 
     const token = req.headers.authorization.split(" ")[1];
-    const decoded = jwt.verify(token, jwtSecret);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+    } catch (err) {
+      return res.status(403).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "Invalid token",
+          description: err.message,
+          code: 403,
+        },
+      });
+    }
 
     const userId = decoded.userId;
 
@@ -350,8 +432,29 @@ exports.findUserSelf = async (req, res) => {
 
 exports.findUserById = async (req, res) => {
   try {
+    if (
+      !req.headers?.authorization ||
+      !req.headers?.authorization?.startsWith("Bearer ")
+    ) {
+      return res
+        .status(401)
+        .json({ status: false, message: "Unauthorized: Token not found" });
+    }
+    let decoded;
     const token = req.headers.authorization.split(" ")[1];
-    const decoded = jwt.verify(token, jwtSecret);
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+    } catch (err) {
+      return res.status(403).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "Invalid token",
+          description: err.message,
+          code: 403,
+        },
+      });
+    }
     const userRole = decoded.role;
 
     if (userRole !== "admin") {
@@ -364,6 +467,14 @@ exports.findUserById = async (req, res) => {
           code: 403,
         },
       });
+    }
+
+    const userId = req.params.id;
+
+    if (!userId) {
+      return res
+        .status(400)
+        .json({ status: false, message: "User ID not found" });
     }
 
     const response = await db.query("SELECT * FROM users WHERE id = $1", [
@@ -391,52 +502,18 @@ exports.findUserById = async (req, res) => {
 
 exports.updateUserById = async (req, res) => {
   try {
+    if (
+      !req.headers?.authorization ||
+      !req.headers?.authorization?.startsWith("Bearer ")
+    ) {
+      return res
+        .status(401)
+        .json({ status: false, message: "Unauthorized: Token not found" });
+    }
+    let decoded;
     const token = req.headers.authorization.split(" ")[1];
-
-    if (!token) {
-      return res.status(401).json({
-        status: false,
-        payload: null,
-        error: {
-          message: "Unauthorized",
-          description: "No token provided",
-          code: 401,
-        },
-      });
-    }
-
-    if (req.body?.data?.image) {
-      if (imageModule.isBase64(req.body.data.image)) {
-        const imgChecks =
-          imageModule.checkImageExtension(req.body.data.image) &&
-          imageModule.checkImageSize(req.body.data.image);
-        if (imgChecks !== true) {
-          return res.status(422).json({
-            status: false,
-            payload: null,
-            error: {
-              message: "Incorrect data type for image",
-              description: "Image is not Base64 or URL",
-              code: 422,
-            },
-          });
-        }
-      } else {
-        return res.status(422).json({
-          status: false,
-          payload: null,
-          error: {
-            message: "Incorrect data type for image",
-            description: "Image is not Base64 or URL",
-            code: 422,
-          },
-        });
-      }
-    }
-
-    let decodedToken;
     try {
-      decodedToken = jwt.verify(token, jwtSecret);
+      decoded = jwt.verify(token, jwtSecret);
     } catch (err) {
       return res.status(403).json({
         status: false,
@@ -449,13 +526,126 @@ exports.updateUserById = async (req, res) => {
       });
     }
 
-    const { role } = decodedToken || {};
+    let { type, login, email, password, userName, image } = req.body;
+
+    const allowedTypes = ["admin", "user"];
+    if (type && !allowedTypes.includes(type)) {
+      return res.status(422).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "Only admin or user types are allowed",
+          description: "Only admin or user types are allowed",
+          code: 422,
+        },
+      });
+    }
+
+    if (!req.params.id) {
+      return res.status(403).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "Access denied",
+          description: "Please provide existing user ID",
+          code: 403,
+        },
+      });
+    }
+
+    const userId = req.params.id;
+
+    const userExists = await db.query("SELECT * FROM users WHERE id = $1", [
+      userId,
+    ]);
+
+    if (userExists.length === 0)
+      return res.status(400).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "User not found",
+          description: "There is no user with provided ID",
+          code: 403,
+        },
+      });
+
+    const { role } = decoded || {};
+
+    if (role !== "admin")
+      return res.status(403).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "Access denied",
+          description: "Only admin can make such changes",
+          code: 403,
+        },
+      });
 
     let restrictedFields;
     if (role !== "admin") {
-      restrictedFields = ["type", "login", "active", "deleted"];
+      restrictedFields = ["type", "created", "updated", "lastLogin"];
     } else {
       restrictedFields = [];
+    }
+
+    if (!dataHelper.validateStringLength(login)) {
+      return res.status(422).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "Login length is too large",
+          description: `Login must be within ${maxUserFieldsLength} characters`,
+          code: 422,
+        },
+      });
+    } else if (!dataHelper.validateStringLength(email)) {
+      return res.status(422).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "Email length is too large",
+          description: `Email must be within ${maxUserFieldsLength} characters`,
+          code: 422,
+        },
+      });
+    } else if (!dataHelper.validateStringLength(userName)) {
+      return res.status(422).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "User name length is too large",
+          description: `User name must be within ${maxUserFieldsLength} characters`,
+          code: 422,
+        },
+      });
+    } else if (!dataHelper.validateStringLength(password)) {
+      return res.status(422).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "User password length is too large",
+          description: `User password must be within ${maxUserFieldsLength} characters`,
+          code: 422,
+        },
+      });
+    }
+
+    if (image) {
+      if (imageHelper.isBase64(image)) {
+        req.body.image = await dataHelper.imageTransformer(req.body.image);
+      } else {
+        return res.status(400).json({
+          status: false,
+          payload: null,
+          error: {
+            message: "No valid base 64 image",
+            description: `Image must be in base 64 format`,
+            code: 403,
+          },
+        });
+      }
     }
 
     if (req.body) {
@@ -474,13 +664,14 @@ exports.updateUserById = async (req, res) => {
       }
     }
 
+    req.body.login = req.body.login.toLowerCase();
+    req.body.email = req.body.email.toLowerCase();
+
     if (req.body && req.body.password) {
       req.body.password = await bcrypt.hash(req.body.password, 12);
     }
 
-    const { login, email } = req.body;
-
-    if ((login || email) && role !== "admin") {
+    if (login || email) {
       const userExists = await db.query(
         "SELECT * FROM users WHERE id <> $1 AND (login = $2 OR email = $3)",
         [userId, login, email]
@@ -505,7 +696,7 @@ exports.updateUserById = async (req, res) => {
 
       console.log(
         `User with ID ${userId} is updated by User ${
-          decodedToken ? decodedToken.userId : "Unknown"
+          decoded ? decoded.userId : "Unknown"
         }`
       );
 
@@ -541,24 +732,19 @@ exports.updateUserById = async (req, res) => {
 
 exports.patchUserSelf = async (req, res) => {
   try {
-    const token = req.headers.authorization.split(" ")[1];
-
-    if (!token) {
-      return res.status(401).json({
-        status: false,
-        payload: null,
-        error: {
-          message: "Unauthorized",
-          description: "No token provided",
-          code: 401,
-        },
-      });
+    if (
+      !req.headers?.authorization ||
+      !req.headers?.authorization?.startsWith("Bearer ")
+    ) {
+      return res
+        .status(401)
+        .json({ status: false, message: "Unauthorized: Token not found" });
     }
-
-    let decodedToken, userId;
+    let decoded, userId;
+    const token = req.headers.authorization.split(" ")[1];
     try {
-      decodedToken = jwt.verify(token, jwtSecret);
-      userId = decodedToken.userId;
+      decoded = jwt.verify(token, jwtSecret);
+      userId = decoded.userId;
     } catch (err) {
       return res.status(403).json({
         status: false,
@@ -571,11 +757,84 @@ exports.patchUserSelf = async (req, res) => {
       });
     }
 
-    const { role } = decodedToken || {};
+    const { role } = decoded || {};
+
+    let { type, login, email, password, userName, image } = req.body;
+
+    if (!dataHelper.validateStringLength(login)) {
+      return res.status(422).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "Login length is too large",
+          description: `Login must be within ${maxUserFieldsLength} characters`,
+          code: 422,
+        },
+      });
+    } else if (!dataHelper.validateStringLength(email)) {
+      return res.status(422).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "Email length is too large",
+          description: `Email must be within ${maxUserFieldsLength} characters`,
+          code: 422,
+        },
+      });
+    } else if (!dataHelper.validateStringLength(userName)) {
+      return res.status(422).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "User name length is too large",
+          description: `User name must be within ${maxUserFieldsLength} characters`,
+          code: 422,
+        },
+      });
+    } else if (!dataHelper.validateStringLength(password)) {
+      return res.status(422).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "User password length is too large",
+          description: `User password must be within ${maxUserFieldsLength} characters`,
+          code: 422,
+        },
+      });
+    }
+
+    const allowedTypes = ["admin", "user"];
+    if (type && !allowedTypes.includes(type)) {
+      return res.status(422).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "Only admin or user types are allowed",
+          description: "Only admin or user types are allowed",
+          code: 422,
+        },
+      });
+    }
+
+    if (
+      ![type, login, email, password, userName, image].every(
+        (field) => typeof field === "string" || field === undefined
+      )
+    ) {
+      return res.status(422).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "Incorrect data type in one or more fields",
+          description: "One or more fields have incorrect data type",
+          code: 422,
+        },
+      });
+    }
 
     let restrictedFields;
     if (role !== "admin") {
-      restrictedFields = ["type", "login", "active", "deleted"];
+      restrictedFields = ["type", "created", "updated", "lastLogin"];
     } else {
       restrictedFields = [];
     }
@@ -596,13 +855,22 @@ exports.patchUserSelf = async (req, res) => {
       }
     }
 
-    if (req.body && req.body.password) {
-      req.body.password = await bcrypt.hash(req.body.password, 12);
+    if (password) {
+      password = await bcrypt.hash(req.body.password, 12);
     }
 
-    const { login, email } = req.body;
+    if (login !== undefined) {
+      req.body.login = login.toLowerCase();
+    }
+    if (email !== undefined) {
+      req.body.email = email.toLowerCase();
+    }
 
-    if ((login || email) && role !== "admin") {
+    if (req.body.image) {
+      image = await dataHelper.imageTransformer(req.body.image);
+    }
+
+    if (req.body.login || req.body.email) {
       const userExists = await db.query(
         "SELECT * FROM users WHERE id <> $1 AND (login = $2 OR email = $3)",
         [userId, login, email]
@@ -619,6 +887,8 @@ exports.patchUserSelf = async (req, res) => {
         });
       }
     }
+
+    console.log(req.body);
 
     const { query, params } = db.patchHelper(User, userId, req.body);
 
@@ -662,7 +932,29 @@ exports.patchUserSelf = async (req, res) => {
 
 exports.deleteUserById = async (req, res) => {
   try {
+    if (
+      !req.headers?.authorization ||
+      !req.headers?.authorization?.startsWith("Bearer ")
+    ) {
+      return res
+        .status(401)
+        .json({ status: false, message: "Unauthorized: Token not found" });
+    }
+    let decoded;
     const token = req.headers.authorization.split(" ")[1];
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+    } catch (err) {
+      return res.status(403).json({
+        status: false,
+        payload: null,
+        error: {
+          message: "Invalid token",
+          description: err.message,
+          code: 403,
+        },
+      });
+    }
 
     if (!token) {
       return res.status(401).json({
@@ -676,22 +968,7 @@ exports.deleteUserById = async (req, res) => {
       });
     }
 
-    let decodedToken;
-    try {
-      decodedToken = jwt.verify(token, jwtSecret);
-    } catch (err) {
-      return res.status(403).json({
-        status: false,
-        payload: null,
-        error: {
-          message: "Invalid token",
-          description: err.message,
-          code: 403,
-        },
-      });
-    }
-
-    const { role } = decodedToken || {};
+    const { role } = decoded || {};
 
     if (role !== "admin") {
       return res.status(403).json({
@@ -699,15 +976,12 @@ exports.deleteUserById = async (req, res) => {
         payload: null,
         error: {
           message: "Invalid token",
-          description: err.message,
+          description: "Only admin can delete users",
           code: 403,
         },
       });
     }
 
-    await db.query(`UPDATE users SET "active" = false WHERE "id" = $1`, [
-      req.params.id,
-    ]);
     return await dbHelper.deleteModelById(req, res, User, true);
   } catch (e) {
     const error = `Error in deleteUserById`;

@@ -21,17 +21,16 @@ const Comment = {
     type: dbTypes.STRING,
     allowNull: true,
   },
-  data: {
-    type: dbTypes.JSONB,
-    allowNull: false,
-    defaultValue: {},
-  },
   replied: {
     type: dbTypes.INTEGER,
     allowNull: true,
   },
   image: {
     type: dbTypes.IMAGE,
+    allowNull: true,
+  },
+  like: {
+    type: dbTypes.INTEGER,
     allowNull: true,
   },
   created: {
