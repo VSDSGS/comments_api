@@ -1,4 +1,5 @@
 const db = require("../services/db");
+const { User } = require("../models/user");
 
 function removeFieldWithBlockDirectAccess(data, model) {
   for (let fieldI in model) {
@@ -106,7 +107,7 @@ module.exports = {
 
       res.json({
         status: true,
-        payload: response,
+        payload: bulkRemoveFieldWithBlockDirectAccess(response, model),
         count,
         page,
         error: null,

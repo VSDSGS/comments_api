@@ -9,6 +9,8 @@ const defaultEnvVariablesValue = {
   jwtLongExpiresIn: "720h",
   databaseURL: "postgres://postgres:example@postgres:5432/postgres",
   allowedExtensions: ["jpg", "jpeg", "png", "gif"],
+  maxUserFieldsLength: 30,
+  maxCommentWeight: 102400,
 };
 
 module.exports = defaultEnvVariablesValue;

@@ -31,16 +31,9 @@ const User = {
     type: dbTypes.STRING,
     allowNull: false,
   },
-  active: {
-    type: dbTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: false,
-    comment: "True if user is active",
-  },
-  data: {
-    type: dbTypes.JSONB,
-    allowNull: false,
-    defaultValue: {},
+  image: {
+    type: dbTypes.IMAGE,
+    allowNull: true,
   },
   created: {
     type: dbTypes.TIMESTAMP,
