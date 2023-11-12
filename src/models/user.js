@@ -1,54 +1,54 @@
-const { dbTypes } = require("./enums/dbTypes");
+const { dbTypes } = require('./enums/dbTypes')
 const User = {
-  _tableName: "users",
+  _tableName: 'users',
   id: {
     type: dbTypes.KEY,
-    primaryKey: true,
+    primaryKey: true
   },
   type: {
     type: dbTypes.STRING,
-    allowNull: false,
+    allowNull: false
   },
   login: {
     type: dbTypes.STRING,
     unique: true,
     allowNull: false,
-    comment: "Login name",
+    comment: 'Login name'
   },
   email: {
     type: dbTypes.STRING,
     unique: true,
     allowNull: false,
-    comment: "User email",
+    comment: 'User email'
   },
   password: {
     type: dbTypes.STRING,
     allowNull: false,
     blockDirectAccess: true,
-    comment: "Hashed password",
+    comment: 'Hashed password'
   },
   userName: {
     type: dbTypes.STRING,
-    allowNull: false,
+    allowNull: false
   },
   image: {
     type: dbTypes.IMAGE,
-    allowNull: true,
+    allowNull: true
   },
   created: {
-    type: dbTypes.TIMESTAMP,
+    type: dbTypes.TIMESTAMP
   },
   updated: {
-    type: dbTypes.TIMESTAMP,
+    type: dbTypes.TIMESTAMP
   },
   deleted: {
     type: dbTypes.TIMESTAMP,
-    allowNull: true,
+    allowNull: true
   },
   lastLogin: {
     type: dbTypes.TIMESTAMP,
-    allowNull: true,
-  },
-};
+    allowNull: true
+  }
+}
 
-module.exports.User = User;
+module.exports.User = User

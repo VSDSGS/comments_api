@@ -1,8 +1,8 @@
-const router = require("express")();
-const validator = require("../../middleware/validate.middleware");
-const userController = require("../../controllers/user.controller");
-const { check } = require("express-validator");
-const { minPasswordLength } = require("../../config");
+const router = require('express')()
+const validator = require('../../middleware/validate.middleware')
+const userController = require('../../controllers/user.controller')
+const { check } = require('express-validator')
+const { minPasswordLength } = require('../../config')
 
 /**
  * @api {post} /v1/auth/register Create User
@@ -21,9 +21,10 @@ const { minPasswordLength } = require("../../config");
  * @apiSuccessExample {json} Success-Response:
  *     HTTP/1.1 200 OK
  *     {
-        "id", "type", "login", "email", "password", "userName", "image", "created", "updated", "deleted", "lastLogin"
-    }
- *
+ *      status: true,
+ *      payload: { response },
+ *      error: null,
+ *     }
  * @apiError {json} object object with error
  * @apiErrorExample {json} Error-Response:
  *     HTTP/1.1 400 Bad Request
@@ -37,32 +38,32 @@ const { minPasswordLength } = require("../../config");
  *     }
  */
 router.post(
-  "/auth/register",
+  '/auth/register',
   [
-    check("type", "Type is required").isString(),
-    check("login", "Incorrect login name").isString(),
-    check("email", "Incorrect email").isString(),
+    check('type', 'Type is required').isString(),
+    check('login', 'Incorrect login name').isString(),
+    check('email', 'Incorrect email').isString(),
     check(
-      "password",
-      "Password length is less then " + minPasswordLength
+      'password',
+      'Password length is less then ' + minPasswordLength
     ).isLength({ min: minPasswordLength }),
-    check("userName", "Incorrect user name").isString(),
+    check('userName', 'Incorrect user name').isString()
   ],
   validator,
   async (req, res) => {
     try {
-      return await userController.createUser(req, res);
+      return await userController.createUser(req, res)
     } catch (e) {
-      const error = "Error when user register ";
-      console.error(error + e.toString());
+      const error = 'Error when user register '
+      console.error(error + e.toString())
       res.status(500).json({
         status: false,
         payload: null,
-        error: { message: error, description: e.toString(), code: 500 },
-      });
+        error: { message: error, description: e.toString(), code: 500 }
+      })
     }
   }
-);
+)
 
 /**
  * @api {post} /v1/auth/login User login
@@ -95,26 +96,26 @@ router.post(
  *     }
  */
 router.post(
-  "/auth/login",
+  '/auth/login',
   [
-    check("email", "Needs a correct email").isString(),
-    check("password", "Enter a password").exists(),
+    check('email', 'Needs a correct email').isString(),
+    check('password', 'Enter a password').exists()
   ],
   validator,
   async (req, res) => {
     try {
-      return await userController.login(req, res);
+      return await userController.login(req, res)
     } catch (e) {
-      const error = `Error when user with login ${req.body.login} login`;
-      console.error(error + e.toString());
+      const error = `Error when user with login ${req.body.login} login`
+      console.error(error + e.toString())
       res.status(500).json({
         status: false,
         payload: null,
-        error: { message: error, description: e.toString(), code: 500 },
-      });
+        error: { message: error, description: e.toString(), code: 500 }
+      })
     }
   }
-);
+)
 
 /**
  * @api {get} /v1/users Get all users (Only admin)
@@ -146,19 +147,19 @@ router.post(
  *        code: 400 },
  *     }
  */
-router.get("/users", async (req, res) => {
+router.get('/users', async (req, res) => {
   try {
-    return await userController.listAllUsers(req, res);
+    return await userController.listAllUsers(req, res)
   } catch (e) {
-    const error = "Error when get all users ";
-    console.error(error + e.toString());
+    const error = 'Error when get all users '
+    console.error(error + e.toString())
     res.status(500).json({
       status: false,
       payload: null,
-      error: { message: error, description: e.toString(), code: 500 },
-    });
+      error: { message: error, description: e.toString(), code: 500 }
+    })
   }
-});
+})
 
 /**
  * @api {get} /v1/users/me Get user self info
@@ -173,7 +174,7 @@ router.get("/users", async (req, res) => {
  *      status: true,
  *      payload: { response },
  *      error: null,
- * }
+ *     }
  * @apiError {json} object object with error
  * @apiErrorExample {json} Error-Response:
  *     HTTP/1.1 400 Bad Request
@@ -186,19 +187,19 @@ router.get("/users", async (req, res) => {
  *        code: 400 },
  *     }
  */
-router.get("/users/me", async (req, res) => {
+router.get('/users/me', async (req, res) => {
   try {
-    return await userController.findUserSelf(req, res);
+    return await userController.findUserSelf(req, res)
   } catch (e) {
-    const error = "Error when getting self info ";
-    console.error(error + e.toString());
+    const error = 'Error when getting self info '
+    console.error(error + e.toString())
     res.status(500).json({
       status: false,
       payload: null,
-      error: { message: error, description: e.toString(), code: 500 },
-    });
+      error: { message: error, description: e.toString(), code: 500 }
+    })
   }
-});
+})
 
 /**
  * @api {get} /v1/users/:id Get user by id (Only for admin)
@@ -215,7 +216,7 @@ router.get("/users/me", async (req, res) => {
  *      status: true,
  *      payload: { response },
  *      error: null,
- * }
+ *     }
  * @apiError {json} object object with error
  * @apiErrorExample {json} Error-Response:
  *     HTTP/1.1 400 Bad Request
@@ -228,19 +229,19 @@ router.get("/users/me", async (req, res) => {
  *        code: 400 },
  *     }
  */
-router.get("/users/:id", async (req, res) => {
+router.get('/users/:id', async (req, res) => {
   try {
-    return await userController.findUserById(req, res);
+    return await userController.findUserById(req, res)
   } catch (e) {
-    const error = "Error when searching user by id ";
-    console.error(error + e.toString());
+    const error = 'Error when searching user by id '
+    console.error(error + e.toString())
     res.status(500).json({
       status: false,
       payload: null,
-      error: { message: error, description: e.toString(), code: 500 },
-    });
+      error: { message: error, description: e.toString(), code: 500 }
+    })
   }
-});
+})
 
 /**
  * @api {patch} /v1/users/me Patch user self
@@ -253,9 +254,9 @@ router.get("/users/:id", async (req, res) => {
  *     HTTP/1.1 200 OK
  *     {
  *      status: true,
- *      payload: { login },
+ *      payload: { response },
  *      error: null,
- * }
+ *     }
  *
  * @apiError {json} object object with error
  * @apiErrorExample {json} Error-Response:
@@ -269,19 +270,19 @@ router.get("/users/:id", async (req, res) => {
  *        code: 400 },
  *     }
  */
-router.patch("/users/me", async (req, res) => {
+router.patch('/users/me', async (req, res) => {
   try {
-    return await userController.patchUserSelf(req, res);
+    return await userController.patchUserSelf(req, res)
   } catch (e) {
-    const error = "Error when user patch self ";
-    console.error(error + e.toString());
+    const error = 'Error when user patch self '
+    console.error(error + e.toString())
     res.status(500).json({
       status: false,
       payload: null,
-      error: { message: error, description: e.toString(), code: 500 },
-    });
+      error: { message: error, description: e.toString(), code: 500 }
+    })
   }
-});
+})
 
 /**
  * @api {put} /v1/users/:id Update user by id
@@ -303,7 +304,7 @@ router.patch("/users/me", async (req, res) => {
  *     HTTP/1.1 200 OK
  *     {
  *      status: true,
- *      payload: { userId and other user fields },
+ *      payload: { response },
  *      error: null,
  * }
  *
@@ -320,32 +321,32 @@ router.patch("/users/me", async (req, res) => {
  *     }
  */
 router.put(
-  "/users/:id",
+  '/users/:id',
   [
-    check("type", "Type is required").isString(),
-    check("login", "Incorrect login name").isString(),
-    check("email", "Incorrect email").isString(),
+    check('type', 'Type is required').isString(),
+    check('login', 'Incorrect login name').isString(),
+    check('email', 'Incorrect email').isString(),
     check(
-      "password",
-      "Password length is less then " + minPasswordLength
+      'password',
+      'Password length is less then ' + minPasswordLength
     ).isLength({ min: minPasswordLength }),
-    check("userName", "Incorrect user name").isString(),
+    check('userName', 'Incorrect user name').isString()
   ],
   validator,
   async (req, res) => {
     try {
-      return await userController.updateUserById(req, res);
+      return await userController.updateUserById(req, res)
     } catch (e) {
-      const error = "Error when user update by id ";
-      console.error(error + e.toString());
+      const error = 'Error when user update by id '
+      console.error(error + e.toString())
       res.status(500).json({
         status: false,
         payload: null,
-        error: { message: error, description: e.toString(), code: 500 },
-      });
+        error: { message: error, description: e.toString(), code: 500 }
+      })
     }
   }
-);
+)
 
 /**
  * @api {delete} /v1/users/:id Delete user by id (Soft delete)
@@ -360,7 +361,7 @@ router.put(
  *     HTTP/1.1 200 OK
  *     {
  *      status: true,
- *      payload: { userId and other user fields },
+ *      payload: { response },
  *      error: null,
  * }
  * @apiError {json} object object with error
@@ -375,18 +376,18 @@ router.put(
  *        code: 400 },
  *     }
  */
-router.delete("/users/:id", async (req, res) => {
+router.delete('/users/:id', async (req, res) => {
   try {
-    return await userController.deleteUserById(req, res);
+    return await userController.deleteUserById(req, res)
   } catch (e) {
-    const error = "Error when delete user by id ";
-    console.error(error + e.toString());
+    const error = 'Error when delete user by id '
+    console.error(error + e.toString())
     res.status(500).json({
       status: false,
       payload: null,
-      error: { message: error, description: e.toString(), code: 500 },
-    });
+      error: { message: error, description: e.toString(), code: 500 }
+    })
   }
-});
+})
 
-module.exports = router;
+module.exports = router

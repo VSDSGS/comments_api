@@ -1,0 +1,38 @@
+version: "3.7"
+services:
+  app:
+    container_name: comments-api
+    image: "node:21.1.0"
+    depends_on:
+      - postgres
+    restart: always
+    ports:
+      - "8080:3000"
+    working_dir: /home/node/app
+    volumes:
+      - "./:/home/node/app"
+    environment:
+      POSTGRES_URI: "postgresql://postgres:example@postgres:5432/postgres"
+      PORT: 3000
+    command: "bash -c 'npm i && npm run start:dev'"
+    networks:
+      - comments
+  postgres:
+    container_name: comments-postgres
+    image: postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: example
+    volumes:
+      - "pgdata:/var/lib/postgresql/data"
+    networks:
+      - comments
+networks:
+  comments:
+    driver: bridge
+volumes:
+  pgdata: null

@@ -1,4 +1,4 @@
-require("dotenv").config();
+require('dotenv').config()
 
 module.exports = {
   appName: process.env.APP_NAME,
@@ -10,12 +10,12 @@ module.exports = {
     process.env.MINPASSWORDLENGTH && Number(process.env.MINPASSWORDLENGTH),
   jwtExpiresIn: process.env.JWTEXPIREINTERVAL,
   jwtLongExpiresIn: process.env.JWTLONGEXPIREINTERVAL,
-  isLogToFile: process.env.ISLOGTOFILE && process.env.ISLOGTOFILE === "true",
+  isLogToFile: process.env.ISLOGTOFILE && process.env.ISLOGTOFILE === 'true',
   isLogToConsole:
-    process.env.ISLOGTOCONSOLE && process.env.ISLOGTOCONSOLE === "true",
+    process.env.ISLOGTOCONSOLE && process.env.ISLOGTOCONSOLE === 'true',
   redisUri: process.env.REDISURI,
   cacheTTL: process.env.CACHETTL && Number(process.env.CACHETTL),
   maxUploadSize: process.env.MAX_UPLOAD_SIZE,
   blockCron: process.env.BLOCK_CRON,
-  refreshToken: process.env.GMAIL_REFRESH_TOKEN,
-};
+  refreshToken: process.env.GMAIL_REFRESH_TOKEN
+}
