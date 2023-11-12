@@ -1,52 +1,43 @@
-const Jimp = require("jimp");
+const Jimp = require('jimp')
 
 const imageModule = {
   checkImageSize: async function (base64Data) {
     try {
       if (!this.checkImageExtension(base64Data)) {
-        return false;
+        return false
       }
 
-      const image = await Jimp.read(Buffer.from(base64Data, "base64"));
+      const image = await Jimp.read(Buffer.from(base64Data, 'base64'))
 
-      const width = image.bitmap.width;
-      const height = image.bitmap.height;
+      const width = image.bitmap.width
+      const height = image.bitmap.height
 
-      console.log("Width:", width, "Height:", height);
+      console.log('Width:', width, 'Height:', height)
 
-      const maxWidth = 240;
-      const maxHeight = 320;
+      const maxWidth = 240
+      const maxHeight = 320
 
       if (width > maxWidth || height > maxHeight) {
         console.log(
-          "Max width or height is too big. Image must be 320x240 max"
-        );
-        return false;
+          'Max width or height is too big. Image must be 320x240 max'
+        )
+        return false
       }
 
-      return true;
+      return true
     } catch (error) {
-      console.error("Error checking image:", error);
-      return false;
+      console.error('Error checking image:', error)
+      return false
     }
   },
 
   isBase64: function (str) {
     try {
-      return Buffer.from(str, "base64").toString("base64") === str;
+      return Buffer.from(str, 'base64').toString('base64') === str
     } catch (err) {
-      return false;
+      return false
     }
-  },
+  }
+}
 
-  isValidUrl: function (string) {
-    try {
-      new URL(string);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  },
-};
-
-module.exports = imageModule;
+module.exports = imageModule

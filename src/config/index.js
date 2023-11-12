@@ -1,4 +1,4 @@
 module.exports = {
-  ...require("./default"),
-  ...JSON.parse(JSON.stringify(require("./env"))),
-};
+  ...require('./default'),
+  ...JSON.parse(JSON.stringify(require('./env')))
+}

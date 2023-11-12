@@ -1,48 +1,48 @@
-const { dbTypes } = require("./enums/dbTypes");
+const { dbTypes } = require('./enums/dbTypes')
 const Comment = {
-  _tableName: "comments",
+  _tableName: 'comments',
   id: {
     type: dbTypes.KEY,
-    primaryKey: true,
+    primaryKey: true
   },
   userName: {
     type: dbTypes.STRING,
-    allowNull: false,
+    allowNull: false
   },
   email: {
     type: dbTypes.STRING,
-    allowNull: false,
+    allowNull: false
   },
   homePage: {
     type: dbTypes.STRING,
-    allowNull: true,
+    allowNull: true
   },
   text: {
     type: dbTypes.STRING,
-    allowNull: true,
+    allowNull: true
   },
   replied: {
     type: dbTypes.INTEGER,
-    allowNull: true,
+    allowNull: true
   },
   image: {
     type: dbTypes.IMAGE,
-    allowNull: true,
+    allowNull: true
   },
   like: {
     type: dbTypes.INTEGER,
-    allowNull: true,
+    allowNull: true
   },
   created: {
-    type: dbTypes.TIMESTAMP,
+    type: dbTypes.TIMESTAMP
   },
   updated: {
-    type: dbTypes.TIMESTAMP,
+    type: dbTypes.TIMESTAMP
   },
   deleted: {
     type: dbTypes.TIMESTAMP,
-    allowNull: true,
-  },
-};
+    allowNull: true
+  }
+}
 
-module.exports.Comment = Comment;
+module.exports.Comment = Comment
