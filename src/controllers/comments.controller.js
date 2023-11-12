@@ -313,11 +313,13 @@ exports.updateCommentById = async (req, res) => {
     if (text) {
       if (await dataHelpers.isTextWithinLimit(text)) {
         preparedData.text = text
+        preparedData.image = null
       } else {
         return res.status(400).json({ error: 'Text is too large' })
       }
     } else if (image && (await imageHelpers.isBase64(image))) {
       preparedData.image = await dataHelpers.imageTransformer(image)
+      preparedData.text = null
     } else {
       return res.status(400).json({ error: "Image isn't base 64 data" })
     }
@@ -460,11 +462,13 @@ exports.patchCommentById = async (req, res) => {
     if (text) {
       if (await dataHelpers.isTextWithinLimit(text)) {
         preparedData.text = text
+        preparedData.image = null
       } else {
         return res.status(400).json({ error: 'Text is too large' })
       }
     } else if (image && (await imageHelpers.isBase64(image))) {
       preparedData.image = await dataHelpers.imageTransformer(image)
+      preparedData.text = null
     }
 
     if (typeof replied === 'number') {

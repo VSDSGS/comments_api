@@ -16,10 +16,10 @@ The app environment can have one of the values:
 
 You can find a list of required and optional environment variables in the .env.
 
-# Local run
+# Docker run
 
-1. Setup the next list of required env variables in the config/defaults or .env file
-- JWT_SECRET.
+1. Setup the next list of required env variables in the .env file
+- DATABASE_URL. (Docker)
 2. run command
 ```bash
 $ docker-compose up
@@ -28,8 +28,11 @@ $ docker-compose up
 - http://localhost:8080/ base url of the API
 
 
-## Run
+## Local run
 
+1. Setup the next list of required env variables in the .env file
+- DATABASE_URL. (Local)
+2. run command
 ```bash
 $ npm run start
 ```
@@ -37,6 +40,7 @@ or
 ```bash
 $ npm run start:dev
 ```
+- http://localhost:5500/ base url of the API
 
 ## ApiDoc
 
